@@ -1,0 +1,541 @@
+<!-- ╔═════════════════════════════════════╗ -->
+<!-- ║         DEVELOPED BY SAYAM95T       ║ -->
+<!-- ╚═════════════════════════════════════╝ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S — Holographic Interface</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+:root{
+  --blue:#00d4ff;--blue-dim:#005577;--blue-glow:rgba(0,212,255,0.3);
+  --bg:#000810;--panel-bg:rgba(0,12,25,0.88);
+  --text:#00d4ff;--green:#00ff88;--warn:#ffaa00;--danger:#ff4466;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);font-family:'Share Tech Mono',monospace;color:var(--text);overflow:hidden;width:100vw;height:100vh;cursor:none;}
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(0,212,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.025) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0;}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(0,40,70,0.35) 0%,transparent 70%);pointer-events:none;z-index:0;}
+#canvas3d{position:fixed;inset:0;z-index:1;}
+#handCanvas{position:fixed;inset:0;z-index:2;pointer-events:none;}
+#pipContainer{position:fixed;bottom:20px;right:20px;z-index:10;width:200px;height:150px;border:1px solid var(--blue-dim);border-radius:3px;overflow:hidden;box-shadow:0 0 20px var(--blue-glow);}
+#pipContainer::before{content:'● CAM FEED';position:absolute;top:5px;left:7px;z-index:2;font-size:9px;color:var(--blue);letter-spacing:2px;opacity:0.7;}
+#pipWebcam{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:0.8;}
+#topbar{position:fixed;top:0;left:0;right:0;z-index:8;height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(0,212,255,0.12);background:linear-gradient(180deg,rgba(0,8,16,0.97) 0%,transparent 100%);}
+.topbar-title{font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;letter-spacing:6px;color:var(--blue);text-shadow:0 0 20px var(--blue);}
+.topbar-status{display:flex;gap:20px;font-size:10px;letter-spacing:2px;}
+.status-item{display:flex;align-items:center;gap:6px;color:var(--blue-dim);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
+.status-dot.warn{background:var(--warn);box-shadow:0 0 6px var(--warn);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+#clock{font-family:'Orbitron',sans-serif;font-size:13px;letter-spacing:3px;color:var(--blue);opacity:0.7;}
+#sceneSelector{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:8;display:flex;gap:2px;border:1px solid rgba(0,212,255,0.2);border-radius:2px;overflow:hidden;backdrop-filter:blur(10px);}
+.scene-btn{background:transparent;border:none;padding:8px 16px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--blue-dim);cursor:pointer;border-right:1px solid rgba(0,212,255,0.15);transition:all 0.2s;}
+.scene-btn:last-child{border-right:none;}
+.scene-btn:hover{color:var(--blue);background:rgba(0,212,255,0.08);}
+.scene-btn.active{color:#000;background:var(--blue);box-shadow:0 0 15px var(--blue-glow);}
+.hud-panel{position:fixed;z-index:7;border:1px solid rgba(0,212,255,0.22);background:var(--panel-bg);backdrop-filter:blur(8px);padding:12px 14px;border-radius:2px;min-width:158px;}
+.hud-panel::before{content:'';position:absolute;top:-1px;left:10px;right:10px;height:1px;background:var(--blue);opacity:0.55;}
+.hud-label{font-size:9px;letter-spacing:3px;color:var(--blue-dim);margin-bottom:8px;}
+.hud-value{font-family:'Orbitron',sans-serif;font-size:22px;font-weight:700;color:var(--blue);line-height:1;}
+.hud-sub{font-size:9px;color:var(--blue-dim);margin-top:4px;}
+.hud-bar{height:3px;background:rgba(0,212,255,0.15);border-radius:1px;margin-top:8px;overflow:hidden;}
+.hud-bar-fill{height:100%;background:var(--blue);box-shadow:0 0 8px var(--blue);border-radius:1px;transition:width 0.4s ease;}
+#panelTL{top:80px;left:20px;}
+#panelTR{top:80px;right:230px;}
+#panelBL{bottom:20px;left:20px;}
+#gestureHUD{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:8;display:flex;gap:10px;font-size:10px;letter-spacing:2px;}
+.gesture-pill{padding:6px 14px;border:1px solid rgba(0,212,255,0.2);border-radius:20px;color:var(--blue-dim);background:rgba(0,8,16,0.8);transition:all 0.15s;}
+.gesture-pill.active{color:#000;background:var(--blue);border-color:var(--blue);box-shadow:0 0 12px var(--blue-glow);}
+#cursor{position:fixed;z-index:20;pointer-events:none;width:20px;height:20px;border:1px solid var(--blue);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 10px var(--blue-glow);transition:width 0.1s,height 0.1s,border-color 0.1s;}
+#cursor::before{content:'';position:absolute;top:50%;left:50%;width:4px;height:4px;background:var(--blue);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 6px var(--blue);}
+#cursor.pinch{width:8px;height:8px;border-color:#fff;box-shadow:0 0 20px #fff;}
+#cursor.palm{width:40px;height:40px;border-color:var(--warn);box-shadow:0 0 20px rgba(255,170,0,0.5);}
+#startScreen{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);gap:22px;}
+.start-logo{font-family:'Orbitron',sans-serif;font-size:52px;font-weight:900;letter-spacing:14px;color:var(--blue);text-shadow:0 0 40px var(--blue),0 0 80px rgba(0,212,255,0.25);animation:logoF 4s infinite;}
+@keyframes logoF{0%,94%,100%{opacity:1}95%{opacity:0.7}97%{opacity:1}98.5%{opacity:0.6}}
+.start-sub{font-size:10px;letter-spacing:5px;color:var(--blue-dim);}
+.start-btn{margin-top:10px;padding:12px 44px;border:1px solid var(--blue);background:transparent;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:4px;color:var(--blue);cursor:pointer;transition:all 0.3s;box-shadow:0 0 20px var(--blue-glow);}
+.start-btn:hover{background:var(--blue);color:#000;box-shadow:0 0 40px var(--blue);}
+.start-note{font-size:10px;color:var(--blue-dim);letter-spacing:1px;text-align:center;max-width:420px;line-height:2;}
+#scanline{position:fixed;inset:0;z-index:15;pointer-events:none;background:linear-gradient(transparent 50%,rgba(0,212,255,0.012) 50%);background-size:100% 4px;animation:scanMove 10s linear infinite;opacity:0.5;}
+@keyframes scanMove{0%{background-position:0 0}100%{background-position:0 400px}}
+#objInfo{position:fixed;z-index:9;pointer-events:none;border:1px solid rgba(0,212,255,0.3);background:var(--panel-bg);padding:8px 12px;border-radius:2px;font-size:10px;letter-spacing:1px;display:none;backdrop-filter:blur(8px);}
+.obj-name{color:var(--blue);font-size:12px;margin-bottom:4px;}
+.obj-data{color:var(--blue-dim);}
+#loadingBar{position:fixed;bottom:0;left:0;z-index:25;height:2px;background:var(--blue);box-shadow:0 0 8px var(--blue);width:0%;transition:width 0.5s;}
+#noHandMsg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:6;text-align:center;pointer-events:none;font-size:11px;letter-spacing:4px;color:rgba(0,212,255,0.18);display:none;}
+#helpBar{position:fixed;top:50%;right:20px;transform:translateY(-50%);z-index:8;display:flex;flex-direction:column;gap:8px;font-size:10px;letter-spacing:1px;color:var(--blue-dim);}
+.help-item{display:flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid rgba(0,212,255,0.1);border-radius:2px;background:rgba(0,8,16,0.7);}
+.help-icon{color:var(--blue);font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+  <div class="start-logo">J.A.R.V.I.S</div>
+  <div class="start-sub">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+  <div class="start-sub" style="font-size:9px;margin-top:-14px;opacity:0.45">HOLOGRAPHIC INTERFACE v3.1 — STARK INDUSTRIES</div>
+  <button class="start-btn" onclick="initSystem()">▶ INITIALIZE SYSTEM</button>
+  <div class="start-note">
+    WEBCAM ACCESS REQUIRED FOR HAND TRACKING · GRANT PERMISSION WHEN PROMPTED<br>
+    MOUSE ALSO WORKS — CLICK &amp; DRAG TO GRAB · SCROLL TO SCALE<br>
+    SWITCH SCENES USING THE TOP PANEL AFTER LOADING
+  </div>
+</div>
+
+<div id="loadingBar"></div>
+<canvas id="canvas3d"></canvas>
+<canvas id="handCanvas"></canvas>
+<video id="webcam" autoplay muted playsinline style="display:none"></video>
+<div id="pipContainer" style="display:none"><video id="pipWebcam" autoplay muted playsinline></video></div>
+<div id="cursor"></div>
+<div id="scanline"></div>
+
+<div id="topbar">
+  <div class="topbar-title">J.A.R.V.I.S</div>
+  <div class="topbar-status">
+    <div class="status-item"><div class="status-dot"></div> RENDER</div>
+    <div class="status-item"><div class="status-dot warn" id="trackDot"></div> <span id="trackLabel">OFFLINE</span></div>
+    <div class="status-item"><div class="status-dot"></div> HOLOGRAM</div>
+  </div>
+  <div id="clock">--:--:--</div>
+</div>
+
+<div id="sceneSelector">
+  <button class="scene-btn active" onclick="setScene(0,this)">3D OBJECTS</button>
+  <button class="scene-btn" onclick="setScene(1,this)">IMAGE CARDS</button>
+  <button class="scene-btn" onclick="setScene(2,this)">PARTICLES</button>
+  <button class="scene-btn" onclick="setScene(3,this)">HUD MODE</button>
+</div>
+
+<div class="hud-panel" id="panelTL">
+  <div class="hud-label">HAND VELOCITY</div>
+  <div class="hud-value" id="velValue">0.00</div>
+  <div class="hud-sub">RELATIVE UNITS</div>
+  <div class="hud-bar"><div class="hud-bar-fill" id="velBar" style="width:0%"></div></div>
+</div>
+<div class="hud-panel" id="panelTR">
+  <div class="hud-label">ACTIVE GESTURE</div>
+  <div class="hud-value" id="gestValue" style="font-size:13px;letter-spacing:1px">--</div>
+  <div class="hud-sub">CONFIDENCE: <span id="confValue">--</span></div>
+</div>
+<div class="hud-panel" id="panelBL">
+  <div class="hud-label">SYSTEM STATUS</div>
+  <div class="hud-value" style="font-size:13px;color:var(--green)">ONLINE</div>
+  <div class="hud-sub">FPS: <span id="fpsValue">--</span> · OBJ: <span id="objCount">0</span></div>
+</div>
+
+<div id="gestureHUD">
+  <div class="gesture-pill" id="gPinch">PINCH</div>
+  <div class="gesture-pill" id="gPalm">PALM</div>
+  <div class="gesture-pill" id="gFist">FIST</div>
+  <div class="gesture-pill" id="gPoint">POINT</div>
+</div>
+
+<div id="helpBar">
+  <div class="help-item"><span class="help-icon">🤏</span> PINCH = GRAB</div>
+  <div class="help-item"><span class="help-icon">🖐</span> PALM = PUSH</div>
+  <div class="help-item"><span class="help-icon">✊</span> FIST = ATTRACT</div>
+  <div class="help-item"><span class="help-icon">☝</span> POINT = CURSOR</div>
+</div>
+
+<div id="objInfo">
+  <div class="obj-name" id="objName">—</div>
+  <div class="obj-data" id="objData">—</div>
+</div>
+
+<div id="noHandMsg">RAISE HAND TO INTERFACE</div>
+
+<script>
+const W=window.innerWidth,H=window.innerHeight;
+let scene,camera,renderer,animClock,frameCount=0,lastFPS=Date.now();
+let currentScene=0;
+let objects3D=[],imageCards=[],particles,particlePositions,particleVelocities;
+let grabbedObject=null,grabOffset=new THREE.Vector3();
+let handPosSmooth={x:0.5,y:0.5},prevHandPos={x:0.5,y:0.5};
+let handVelocity=0,gesture='NONE';
+let handTracking=false,handLandmarks=null;
+let mousePos={x:0.5,y:0.5},mouseDown=false;
+let raycaster=new THREE.Raycaster();
+let holoPivot;
+let animT=0;
+
+// ── THREE INIT ──
+function initThree(){
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(60,W/H,0.1,1000);
+  camera.position.set(0,0,8);
+  renderer=new THREE.WebGLRenderer({canvas:document.getElementById('canvas3d'),antialias:true,alpha:true});
+  renderer.setSize(W,H);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setClearColor(0x000000,0);
+  animClock=new THREE.Clock();
+  scene.add(new THREE.AmbientLight(0x003355,0.6));
+  const pl=new THREE.PointLight(0x00d4ff,2.5,25);
+  pl.position.set(5,5,5);scene.add(pl);
+  const pl2=new THREE.PointLight(0x0055aa,1.2,20);
+  pl2.position.set(-5,-3,3);scene.add(pl2);
+  holoPivot=new THREE.Object3D();scene.add(holoPivot);
+  buildScene0();
+  renderLoop();
+}
+
+// ── SCENE 0: 3D OBJECTS ──
+function buildScene0(){
+  clearObjects();
+  const defs=[
+    {g:new THREE.BoxGeometry(1,1,1),name:'CUBE-ALPHA'},
+    {g:new THREE.OctahedronGeometry(0.7),name:'OCTAHEDRON'},
+    {g:new THREE.TetrahedronGeometry(0.8),name:'TETRA-7'},
+    {g:new THREE.IcosahedronGeometry(0.65,0),name:'ICOSA-X'},
+    {g:new THREE.TorusGeometry(0.55,0.2,8,24),name:'TORUS RING'},
+    {g:new THREE.ConeGeometry(0.5,1,6),name:'CONE-6'},
+  ];
+  defs.forEach((d,i)=>{
+    const solid=new THREE.Mesh(d.g,new THREE.MeshPhongMaterial({color:0x002244,emissive:0x001133,transparent:true,opacity:0.8}));
+    const wf=new THREE.Mesh(d.g,new THREE.MeshBasicMaterial({color:0x00d4ff,wireframe:true,transparent:true,opacity:0.45}));
+    solid.add(wf);
+    const a=(i/defs.length)*Math.PI*2;
+    solid.position.set(Math.cos(a)*3,Math.sin(a)*1.5,0);
+    solid.userData={name:d.name,basePos:solid.position.clone(),rotSpeed:new THREE.Vector3((Math.random()-.5)*.012,(Math.random()-.5)*.012+.009,(Math.random()-.5)*.008),velocity:new THREE.Vector3(),gp:Math.random()*Math.PI*2};
+    holoPivot.add(solid);objects3D.push(solid);
+  });
+  document.getElementById('objCount').textContent=objects3D.length;
+}
+
+// ── SCENE 1: CARDS ──
+function buildScene1(){
+  clearObjects();
+  const titles=['REACTOR CORE','SUIT SCHEMATIC','MISSION LOG','THREAT MAP','POWER GRID','NEURAL LINK'];
+  const cols=[0x00d4ff,0x00ff88,0xffaa00,0xff4466,0x8844ff,0x00ccff];
+  titles.forEach((t,i)=>{
+    const g=new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.PlaneGeometry(2.4,1.5),new THREE.MeshBasicMaterial({color:0x001020,transparent:true,opacity:0.85,side:THREE.DoubleSide})));
+    g.add(Object.assign(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(2.4,1.5)),new THREE.LineBasicMaterial({color:cols[i],transparent:true,opacity:0.8})),{}));
+    for(let j=0;j<3;j++){
+      const bar=new THREE.Mesh(new THREE.PlaneGeometry(1.8-j*.2,.025),new THREE.MeshBasicMaterial({color:cols[i],transparent:true,opacity:.35-j*.08}));
+      bar.position.set(0,.4-j*.28,.01);g.add(bar);
+    }
+    const a=(i/titles.length)*Math.PI*2;
+    g.position.set(Math.cos(a)*3.8,Math.sin(a)*.6,Math.sin(a)*1.5);
+    g.userData={name:t,basePos:g.position.clone(),velocity:new THREE.Vector3(),isCard:true};
+    holoPivot.add(g);objects3D.push(g);imageCards.push(g);
+  });
+  document.getElementById('objCount').textContent=imageCards.length;
+}
+
+// ── SCENE 2: PARTICLES ──
+function buildScene2(){
+  clearObjects();
+  const count=3200;
+  const geo=new THREE.BufferGeometry();
+  particlePositions=new Float32Array(count*3);
+  particleVelocities=[];
+  for(let i=0;i<count;i++){
+    particlePositions[i*3]=(Math.random()-.5)*14;
+    particlePositions[i*3+1]=(Math.random()-.5)*9;
+    particlePositions[i*3+2]=(Math.random()-.5)*7;
+    particleVelocities.push({x:0,y:0,z:0,ox:particlePositions[i*3],oy:particlePositions[i*3+1],oz:particlePositions[i*3+2]});
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(particlePositions,3));
+  particles=new THREE.Points(geo,new THREE.PointsMaterial({color:0x00d4ff,size:.055,transparent:true,opacity:.75,sizeAttenuation:true}));
+  scene.add(particles);
+  document.getElementById('objCount').textContent=count;
+}
+
+// ── SCENE 3: HUD RINGS ──
+function buildScene3(){
+  clearObjects();
+  for(let i=0;i<6;i++){
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.8+i*.55,.018,4,64),new THREE.MeshBasicMaterial({color:0x00d4ff,transparent:true,opacity:.08+i*.03}));
+    ring.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,0);
+    ring.userData={speed:.001+i*.0008};
+    holoPivot.add(ring);objects3D.push(ring);
+  }
+  const core=new THREE.Mesh(new THREE.SphereGeometry(.75,10,10),new THREE.MeshBasicMaterial({color:0x001833,wireframe:true,transparent:true,opacity:.55}));
+  holoPivot.add(core);objects3D.push(core);
+  document.getElementById('objCount').textContent='7';
+}
+
+function clearObjects(){
+  objects3D.forEach(o=>{holoPivot.remove(o);scene.remove(o);});
+  objects3D=[];imageCards=[];
+  if(particles){scene.remove(particles);particles=null;}
+  grabbedObject=null;
+}
+
+function setScene(n,btn){
+  currentScene=n;
+  document.querySelectorAll('.scene-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(n===0)buildScene0();
+  else if(n===1)buildScene1();
+  else if(n===2)buildScene2();
+  else buildScene3();
+}
+
+// ── GESTURE DETECTION ──
+function detectGesture(lm){
+  if(!lm||lm.length<21)return'NONE';
+  const tips=[4,8,12,16,20],pip=[3,6,10,14,18];
+  const ext=[lm[4].x<lm[3].x];
+  for(let f=1;f<5;f++)ext.push(lm[tips[f]].y<lm[pip[f]].y);
+  const pinchD=Math.hypot(lm[4].x-lm[8].x,lm[4].y-lm[8].y);
+  if(pinchD<0.065)return'PINCH';
+  const extC=ext.filter(Boolean).length;
+  if(extC<=1)return'FIST';
+  if(extC>=4)return'PALM';
+  if(ext[1]&&!ext[2]&&!ext[3]&&!ext[4])return'POINT';
+  return'IDLE';
+}
+
+// ── MAIN UPDATE ──
+function updateHand(){
+  let cx,cy;
+  if(handTracking&&handLandmarks){
+    cx=1-handLandmarks[8].x;cy=handLandmarks[8].y;
+    gesture=detectGesture(handLandmarks);
+  }else{
+    cx=mousePos.x;cy=mousePos.y;
+    gesture=mouseDown?'PINCH':'POINT';
+  }
+
+  handPosSmooth.x+=(cx-handPosSmooth.x)*.18;
+  handPosSmooth.y+=(cy-handPosSmooth.y)*.18;
+  handVelocity=Math.hypot(handPosSmooth.x-prevHandPos.x,handPosSmooth.y-prevHandPos.y)*100;
+  prevHandPos.x=handPosSmooth.x;prevHandPos.y=handPosSmooth.y;
+
+  const cur=document.getElementById('cursor');
+  cur.style.left=(handPosSmooth.x*W)+'px';
+  cur.style.top=(handPosSmooth.y*H)+'px';
+  cur.className=gesture==='PINCH'?'pinch':gesture==='PALM'?'palm':'';
+
+  ['Pinch','Palm','Fist','Point'].forEach(g=>{
+    document.getElementById('g'+g).classList.toggle('active',gesture===g.toUpperCase());
+  });
+
+  document.getElementById('velValue').textContent=handVelocity.toFixed(2);
+  document.getElementById('velBar').style.width=Math.min(handVelocity*3,100)+'%';
+  document.getElementById('gestValue').textContent=gesture;
+  document.getElementById('confValue').textContent=gesture!=='NONE'?'97%':'--';
+
+  const ndcX=(handPosSmooth.x*2)-1,ndcY=-(handPosSmooth.y*2)+1;
+  raycaster.setFromCamera({x:ndcX,y:ndcY},camera);
+
+  // Grab / throw
+  if(currentScene===0||currentScene===1){
+    if(gesture==='PINCH'){
+      if(!grabbedObject){
+        const hits=raycaster.intersectObjects(objects3D,true);
+        if(hits.length){
+          let obj=hits[0].object;
+          while(obj.parent&&obj.parent!==holoPivot)obj=obj.parent;
+          if(objects3D.includes(obj)){
+            grabbedObject=obj;
+            const pl=new THREE.Plane(new THREE.Vector3(0,0,1),-obj.position.z);
+            const pt=new THREE.Vector3();
+            raycaster.ray.intersectPlane(pl,pt);
+            grabOffset.copy(obj.position).sub(pt);
+          }
+        }
+      }
+      if(grabbedObject){
+        const pl=new THREE.Plane(new THREE.Vector3(0,0,1),-grabbedObject.position.z);
+        const pt=new THREE.Vector3();
+        raycaster.ray.intersectPlane(pl,pt);
+        pt.add(grabOffset);
+        grabbedObject.position.lerp(pt,.28);
+        const info=document.getElementById('objInfo');
+        info.style.display='block';
+        info.style.left=(handPosSmooth.x*W+24)+'px';
+        info.style.top=(handPosSmooth.y*H-44)+'px';
+        document.getElementById('objName').textContent=grabbedObject.userData.name||'OBJECT';
+        document.getElementById('objData').textContent=`X:${grabbedObject.position.x.toFixed(2)} Y:${grabbedObject.position.y.toFixed(2)}`;
+      }
+    }else{
+      if(grabbedObject){
+        const vx=(handPosSmooth.x-prevHandPos.x)*22,vy=-(handPosSmooth.y-prevHandPos.y)*22;
+        if(grabbedObject.userData.velocity)grabbedObject.userData.velocity.set(vx,vy,0);
+        grabbedObject=null;
+      }
+      document.getElementById('objInfo').style.display='none';
+    }
+  }
+
+  // Particle interaction
+  if(currentScene===2&&particles){
+    if(gesture==='PALM'||gesture==='FIST'){
+      const wx=ndcX*6,wy=ndcY*4;
+      const cnt=particlePositions.length/3;
+      const force=gesture==='PALM'?.1:-.06;
+      for(let i=0;i<cnt;i++){
+        const px=particlePositions[i*3],py=particlePositions[i*3+1];
+        const d=Math.hypot(px-wx,py-wy);
+        if(d<2.8&&d>.01){
+          const f=force*(1-d/2.8);
+          particleVelocities[i].x+=(px-wx)/d*f;
+          particleVelocities[i].y+=(py-wy)/d*f;
+        }
+      }
+    }
+  }
+}
+
+// ── RENDER LOOP ──
+function renderLoop(){
+  requestAnimationFrame(renderLoop);
+  const dt=animClock.getDelta();
+  animT+=dt;
+  frameCount++;
+  if(Date.now()-lastFPS>600){document.getElementById('fpsValue').textContent=Math.round(frameCount/(Date.now()-lastFPS)*1000);frameCount=0;lastFPS=Date.now();}
+
+  updateHand();
+
+  if(currentScene===0||currentScene===1){
+    objects3D.forEach(obj=>{
+      if(obj===grabbedObject)return;
+      if(obj.userData.speed){obj.rotation.y+=obj.userData.speed;obj.rotation.x+=obj.userData.speed*.7;return;}
+      if(obj.userData.rotSpeed){
+        obj.rotation.x+=obj.userData.rotSpeed.x;
+        obj.rotation.y+=obj.userData.rotSpeed.y;
+        obj.rotation.z+=obj.userData.rotSpeed.z;
+      }
+      if(obj.userData.velocity){
+        obj.position.add(obj.userData.velocity.clone().multiplyScalar(dt));
+        obj.userData.velocity.multiplyScalar(.92);
+        if(obj.userData.basePos){
+          obj.position.x+=(obj.userData.basePos.x-obj.position.x)*.004;
+          obj.position.y+=(obj.userData.basePos.y-obj.position.y)*.004;
+        }
+        if(Math.abs(obj.position.x)>7)obj.userData.velocity.x*=-.8;
+        if(Math.abs(obj.position.y)>5)obj.userData.velocity.y*=-.8;
+      }
+      if(obj.children&&obj.children[0]&&obj.children[0].material.wireframe!==undefined){
+        obj.userData.gp=(obj.userData.gp||0)+dt;
+        obj.children[0].material.opacity=.3+Math.sin(obj.userData.gp*1.8)*.18;
+      }
+    });
+    holoPivot.rotation.y=Math.sin(animT*.04)*.12;
+    holoPivot.rotation.x=Math.sin(animT*.025)*.07;
+  }
+
+  if(currentScene===2&&particles){
+    const cnt=particlePositions.length/3;
+    for(let i=0;i<cnt;i++){
+      const v=particleVelocities[i];
+      particlePositions[i*3]+=v.x;
+      particlePositions[i*3+1]+=v.y;
+      particlePositions[i*3+2]+=v.z;
+      v.x+=(v.ox-particlePositions[i*3])*.0018;
+      v.y+=(v.oy-particlePositions[i*3+1])*.0018;
+      v.z+=(v.oz-particlePositions[i*3+2])*.0018;
+      v.x*=.97;v.y*=.97;v.z*=.97;
+    }
+    particles.geometry.attributes.position.needsUpdate=true;
+    particles.rotation.y+=.0008;
+  }
+
+  if(currentScene===3){
+    objects3D.forEach((obj,i)=>{
+      if(obj.userData.speed)obj.rotation.y+=obj.userData.speed;
+      obj.rotation.x=Math.sin(animT*.25+i*.8)*.25;
+    });
+  }
+
+  renderer.render(scene,camera);
+  drawHandOverlay();
+  document.getElementById('clock').textContent=new Date().toTimeString().slice(0,8);
+}
+
+// ── HAND SKELETON OVERLAY ──
+function drawHandOverlay(){
+  const cnv=document.getElementById('handCanvas');
+  if(cnv.width!==W){cnv.width=W;cnv.height=H;}
+  const ctx=cnv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  if(!handLandmarks||!handTracking)return;
+  const lm=handLandmarks;
+  const CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  ctx.strokeStyle='rgba(0,212,255,0.65)';ctx.lineWidth=1.5;ctx.shadowColor='#00d4ff';ctx.shadowBlur=5;
+  CONN.forEach(([a,b])=>{
+    ctx.beginPath();ctx.moveTo((1-lm[a].x)*W,lm[a].y*H);ctx.lineTo((1-lm[b].x)*W,lm[b].y*H);ctx.stroke();
+  });
+  const TIPS=[4,8,12,16,20];
+  lm.forEach((p,i)=>{
+    ctx.beginPath();ctx.arc((1-p.x)*W,p.y*H,TIPS.includes(i)?5:2.5,0,Math.PI*2);
+    ctx.fillStyle=TIPS.includes(i)?'#00d4ff':'rgba(0,212,255,0.55)';
+    ctx.shadowBlur=TIPS.includes(i)?14:4;ctx.fill();
+  });
+}
+
+// ── MEDIAPIPE INIT ──
+async function initMediaPipe(){
+  const lb=document.getElementById('loadingBar');
+  lb.style.width='15%';
+  try{
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+    lb.style.width='40%';
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js');
+    lb.style.width='75%';
+
+    const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+    hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.7,minTrackingConfidence:.55});
+    hands.onResults(res=>{
+      if(res.multiHandLandmarks&&res.multiHandLandmarks.length>0){
+        handLandmarks=res.multiHandLandmarks[0];
+        handTracking=true;
+        document.getElementById('trackLabel').textContent='HAND LOCKED';
+        document.getElementById('trackDot').className='status-dot';
+        document.getElementById('noHandMsg').style.display='none';
+      }else{
+        handLandmarks=null;
+        document.getElementById('noHandMsg').style.display='block';
+      }
+    });
+
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}});
+    const vid=document.getElementById('webcam');
+    vid.srcObject=stream;
+    document.getElementById('pipWebcam').srcObject=stream;
+
+    const cam=new Camera(vid,{onFrame:async()=>{await hands.send({image:vid});},width:640,height:480});
+    cam.start();
+    lb.style.width='100%';
+    setTimeout(()=>{lb.style.opacity='0';},800);
+    document.getElementById('trackLabel').textContent='TRACKING';
+  }catch(e){
+    console.warn('MediaPipe/cam error, mouse fallback:',e);
+    lb.style.opacity='0';
+    document.getElementById('trackLabel').textContent='MOUSE MODE';
+    try{
+      const s=await navigator.mediaDevices.getUserMedia({video:true});
+      document.getElementById('pipWebcam').srcObject=s;
+    }catch(_){}
+  }
+}
+
+function loadScript(src){
+  return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+}
+
+// ── MOUSE ──
+document.addEventListener('mousemove',e=>{mousePos.x=e.clientX/W;mousePos.y=e.clientY/H;});
+document.addEventListener('mousedown',()=>mouseDown=true);
+document.addEventListener('mouseup',()=>mouseDown=false);
+document.addEventListener('wheel',e=>{if(grabbedObject)grabbedObject.scale.multiplyScalar(e.deltaY<0?1.1:.9);});
+
+// ── BOOT ──
+async function initSystem(){
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('pipContainer').style.display='block';
+  document.getElementById('noHandMsg').style.display='block';
+  initThree();
+  await initMediaPipe();
+}
+</script>
+</body>
+</html>
